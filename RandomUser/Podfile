@@ -8,6 +8,7 @@ target 'RandomUser' do
   # Pods for RandomUser
   pod 'SnapKit'
   pod 'RxSwift'
+  pod 'RxCocoa'
   pod 'Kingfisher'
   pod 'Alamofire'
 end
