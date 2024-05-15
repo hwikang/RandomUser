@@ -17,6 +17,7 @@ final class ViewModel {
     struct Input {
         public let refresh: Observable<Void>
         public let fetchMore: Observable<Void>
+        public let deleteUser: Observable<[String]>
     }
     
     struct Output {
@@ -46,9 +47,16 @@ final class ViewModel {
             Task {
                 await self.getUsers(page: self.page.value)
             }
-           
         }.disposed(by: disposeBag)
-       
+        input.deleteUser.bind { [weak self] deleteUserList in
+            guard let self = self else { return }
+
+            var userList = userList.value
+            userList.removeAll { user in
+                deleteUserList.contains { user.uuid == $0 }
+            }
+            self.userList.accept(userList)
+        }.disposed(by: disposeBag)
         
         let maleList = userList.map { userList in
              return userList.filter { $0.gender == .male }

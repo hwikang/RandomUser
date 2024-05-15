@@ -29,15 +29,26 @@ final class GridCollectionViewCell: UICollectionViewCell {
         label.font = .systemFont(ofSize: 12, weight: .thin)
         return label
     }()
-    
+    private let checkButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "checkmark.circle.fill"), for: .normal)
+        button.isHidden = true
+        return button
+    }()
+
     override init(frame: CGRect) {
         super.init(frame: .zero)
         addSubview(imageView)
+        addSubview(checkButton)
         addSubview(nameLabel)
         addSubview(emailLabel)
         imageView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview().inset(10)
             make.height.equalTo(120)
+        }
+        checkButton.snp.makeConstraints { make in
+            make.top.leading.equalTo(imageView).offset(10)
+            make.width.height.equalTo(20)
         }
         nameLabel.snp.makeConstraints { make in
             make.top.equalTo(imageView.snp.bottom).offset(20)
@@ -49,11 +60,11 @@ final class GridCollectionViewCell: UICollectionViewCell {
         }
     }
     
-    public func apply(user: User) {
+    public func apply(user: User, isSelected: Bool) {
         imageView.kf.setImage(with: user.picture.mediumURL)
         nameLabel.text = user.fullName
         emailLabel.text = user.email
-       
+        checkButton.isHidden = !isSelected
     }
     
     required init?(coder: NSCoder) {
