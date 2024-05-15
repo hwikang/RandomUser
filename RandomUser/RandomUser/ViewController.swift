@@ -45,7 +45,18 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
     }()
     private let maleViewController = UserListViewController()
     private let femaleViewController = UserListViewController()
-
+    private let floatingButton: UIButton = {
+        let button = UIButton()
+        var config = UIButton.Configuration.filled()
+        config.baseBackgroundColor = .systemBlue
+        config.cornerStyle = .capsule
+        button.configuration = config
+        button.layer.shadowRadius = 10
+        button.layer.shadowOpacity = 0.3
+        button.layer.zPosition = 1
+        button.setTitle("View 전환", for: .normal)
+        return button
+    }()
     public init(viewModel: ViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
@@ -58,18 +69,35 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
         bindView()
         bindViewModel()
         maleTabButton.isSelected = true
+        pageViewController.setViewControllers([maleViewController], direction: .forward, animated: true, completion: nil)
     }
     
     private func setUI() {
         title = "Random Users"
         view.addSubview(tabButtonStackView)
         tabButtonStackView.addArrangedSubview(maleTabButton)
-        tabButtonStackView.addArrangedSubview(femaleTabButton)
+        tabButtonStackView.addArrangedSubview(femaleTabButton) 
+        addChild(pageViewController)
+        view.addSubview(pageViewController.view)
+        pageViewController.didMove(toParent: self)
+        view.addSubview(floatingButton)
+
         tabButtonStackView.snp.makeConstraints { make in
             make.top.leading.trailing.equalTo(view.safeAreaLayoutGuide)
             make.height.equalTo(60)
         }
-        setPageView()
+        
+        pageViewController.view.snp.makeConstraints { make in
+            make.top.equalTo(tabButtonStackView.snp.bottom)
+            make.leading.trailing.bottom.equalToSuperview()
+        }
+        floatingButton.snp.makeConstraints { make in
+            make.bottom.equalTo(view.safeAreaLayoutGuide).inset(30)
+            make.trailing.equalToSuperview().inset(20)
+            make.width.equalTo(120)
+            make.height.equalTo(44)
+        }
+       
     }
     
     private func bindView() {
@@ -88,6 +116,16 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
             self.pageViewController.setViewControllers([self.pages[1]], direction: .forward,
                                                        animated: true, completion: nil)
         }.disposed(by: disposeBag)
+        floatingButton.rx.tap.bind { [weak self] in
+            guard let self = self else { return }
+            switch self.layoutType.value {
+            case .grid:
+                self.layoutType.accept(.list)
+            case .list:
+                self.layoutType.accept(.grid)
+            }
+        }.disposed(by: disposeBag)
+        
     }
     
     private func bindViewModel() {
@@ -107,22 +145,6 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
                 self?.femaleViewController.applyData(section: layoutType, userList: femaleList)
 
             }.disposed(by: disposeBag)
-    }
-    
-    private func setPageView() {
-        if let firstViewController = pages.first {
-            pageViewController.setViewControllers([firstViewController], direction: .forward, animated: true, completion: nil)
-        }
-                
-        addChild(pageViewController)
-        view.addSubview(pageViewController.view)
-        pageViewController.didMove(toParent: self)
-        
-        pageViewController.view.snp.makeConstraints { make in
-            make.top.equalTo(tabButtonStackView.snp.bottom)
-            make.leading.trailing.bottom.equalToSuperview()
-        }
-        
     }
 
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
@@ -172,6 +194,7 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
     private lazy var collectionView: UICollectionView = {
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: createLayout())
         collectionView.register(GridCollectionViewCell.self, forCellWithReuseIdentifier: GridCollectionViewCell.id)
+        collectionView.register(ListCollectionViewCell.self, forCellWithReuseIdentifier: ListCollectionViewCell.id)
         collectionView.delegate = self
         return collectionView
     }()
@@ -204,7 +227,6 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
             snapshot.appendSections([section])
             snapshot.appendItems(items, toSection: section)
             dataSource?.apply(snapshot)
-
         }
 
     }
@@ -227,7 +249,7 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
                 cell?.apply(user: user)
                 return cell
             } else if case let .list(user) = item {
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: GridCollectionViewCell.id, for: indexPath) as? GridCollectionViewCell
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ListCollectionViewCell.id, for: indexPath) as? ListCollectionViewCell
                 cell?.apply(user: user)
                 return cell
             }
