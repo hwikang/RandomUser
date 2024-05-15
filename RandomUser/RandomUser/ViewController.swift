@@ -73,6 +73,7 @@ class ViewController: UIViewController {
         bindViewModel()
         maleTabButton.isSelected = true
         pageViewController.setViewControllers([maleViewController], direction: .forward, animated: true, completion: nil)
+        refreshTrigger.accept(())
     }
     
     private func setUI() {
@@ -162,6 +163,15 @@ class ViewController: UIViewController {
     private func bindViewModel() {
         let input = ViewModel.Input(refresh: refreshTrigger.asObservable(), fetchMore: fetchMoreTrigger.asObservable(), deleteUser: deleteUserTrigger.asObservable())
         let output = viewModel.transform(input: input)
+        
+        output.error
+            .observe(on: MainScheduler.instance)
+            .bind { [weak self] error in
+                let alert = UIAlertController(title: "에러", message: "뉴스 불러오기에 실패 하였습니다. 다시 시도해 주세요\n\(error.localizedDescription)", preferredStyle: .alert)
+                let action = UIAlertAction(title: "확인", style: UIAlertAction.Style.default)
+                alert.addAction(action)
+            self?.present(alert, animated: true)
+        }.disposed(by: disposeBag)
         
         Observable.combineLatest(deleteUserList, layoutType, output.maleList)
             .observe(on: MainScheduler.instance)

@@ -13,6 +13,8 @@ final class ViewModel {
     private let network: UserNetwork
     private let page = BehaviorRelay<Int>(value: 1)
     private let userList = BehaviorRelay<[User]>(value: [])
+    private let error = PublishRelay<Error>()
+
     private let disposeBag = DisposeBag()
     struct Input {
         public let refresh: Observable<Void>
@@ -21,15 +23,14 @@ final class ViewModel {
     }
     
     struct Output {
+        public let error: Observable<Error>
         public let maleList: Observable<[User]>
         public let femaleList: Observable<[User]>
     }
     
     init(network: UserNetwork) {
         self.network = network
-        Task {
-            await getUsers(page: 1)
-        }
+       
     }
     
     public func transform(input: Input) -> Output {
@@ -64,7 +65,7 @@ final class ViewModel {
         let femaleList = userList.map { userList in
              return userList.filter { $0.gender == .female }
         }
-        return Output(maleList: maleList, femaleList: femaleList)
+        return Output(error: error.asObservable(), maleList: maleList, femaleList: femaleList)
     }
     
     private func getUsers(page: Int) async {
@@ -73,8 +74,7 @@ final class ViewModel {
         case .success(let fetchedUserList):
             userList.accept(fetchedUserList)
         case .failure(let error):
-            //TODO: eror
-            print(error)
+            self.error.accept(error)
         }
     }
 }
