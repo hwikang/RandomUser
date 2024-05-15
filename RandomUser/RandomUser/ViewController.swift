@@ -10,8 +10,19 @@ import SnapKit
 import RxSwift
 import RxCocoa
 
+public enum ViewMode {
+    case view
+    case delete
+}
+
 class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
+    private let viewModel: ViewModel
+    private let refreshTrigger = PublishSubject<Void>()
+    private let fetchMoreTrigger = PublishSubject<Void>()
+    private let viewMode = BehaviorRelay<ViewMode>(value: .view)
+    private let layoutType = BehaviorRelay<Section>(value: .grid)
     private let disposeBag = DisposeBag()
+    
     private let tabButtonStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -19,27 +30,33 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
         stackView.distribution = .fillEqually
         return stackView
     }()
-    private let maleTabButton2 = TabButton(title: "남자")
+
     private let maleTabButton = TabButton(title: "남자")
     private let femaleTabButton = TabButton(title: "여자")
-    lazy var pageViewController = {
+    private lazy var pageViewController = {
         let pageViewController = UIPageViewController(transitionStyle: .scroll, navigationOrientation: .horizontal, options: nil)
         pageViewController.dataSource = self
         pageViewController.delegate = self
         return pageViewController
     }()
-    lazy var pages: [UIViewController] = {
+    private lazy var pages: [UIViewController] = {
         let pages = [maleViewController, femaleViewController]
         return pages
     }()
-    let maleViewController = MaleViewController()
-    let femaleViewController = FemaleViewController()
+    private let maleViewController = UserListViewController()
+    private let femaleViewController = UserListViewController()
+
+    public init(viewModel: ViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         setUI()
         bindView()
+        bindViewModel()
         maleTabButton.isSelected = true
     }
     
@@ -71,6 +88,25 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
             self.pageViewController.setViewControllers([self.pages[1]], direction: .forward,
                                                        animated: true, completion: nil)
         }.disposed(by: disposeBag)
+    }
+    
+    private func bindViewModel() {
+        let input = ViewModel.Input(refresh: refreshTrigger, fetchMore: fetchMoreTrigger)
+        let output = viewModel.transform(input: input)
+        Observable.combineLatest(viewMode, layoutType, output.maleList)
+            .observe(on: MainScheduler.instance)
+            .bind { [weak self] viewMode, layoutType, maleList in
+                self?.maleViewController.applyData(section: layoutType, userList: maleList)
+
+
+            }.disposed(by: disposeBag)
+        
+        Observable.combineLatest(viewMode, layoutType, output.femaleList)
+            .observe(on: MainScheduler.instance)
+            .bind { [weak self] viewMode, layoutType, femaleList in
+                self?.femaleViewController.applyData(section: layoutType, userList: femaleList)
+
+            }.disposed(by: disposeBag)
     }
     
     private func setPageView() {
@@ -116,20 +152,125 @@ class ViewController: UIViewController, UIPageViewControllerDataSource, UIPageVi
             }
         }
     }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+enum Section {
+    case grid
+    case list
 }
 
-class MaleViewController: UIViewController {
-    override func viewDidLoad() {
-            super.viewDidLoad()
-            view.backgroundColor = .red
-            self.title = "MaleViewController"
-        }
+enum Item: Hashable {
+    case grid(User)
+    case list(User)
 }
 
-class FemaleViewController: UIViewController {
+class UserListViewController: UIViewController, UICollectionViewDelegate {
+    public var dataSource: UICollectionViewDiffableDataSource<Section, Item>?
+    private lazy var collectionView: UICollectionView = {
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: createLayout())
+        collectionView.register(GridCollectionViewCell.self, forCellWithReuseIdentifier: GridCollectionViewCell.id)
+        collectionView.delegate = self
+        return collectionView
+    }()
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        setDataSource()
+
+    }
+    
     override func viewDidLoad() {
-            super.viewDidLoad()
-            view.backgroundColor = .blue
-            self.title = "FemaleViewController"
+        super.viewDidLoad()
+        view.backgroundColor = .red
+        setUI()
+    }
+    
+    
+    public func applyData(section: Section, userList: [User]) {
+        var snapshot = NSDiffableDataSourceSnapshot<Section,Item>()
+        switch section {
+        case .grid:
+            let items = userList.map { Item.grid($0) }
+            let section = Section.grid
+            snapshot.appendSections([section])
+            snapshot.appendItems(items, toSection: section)
+            dataSource?.apply(snapshot)
+
+        case .list:
+            let items = userList.map { Item.list($0) }
+            let section = Section.list
+            snapshot.appendSections([section])
+            snapshot.appendItems(items, toSection: section)
+            dataSource?.apply(snapshot)
+
         }
+
+    }
+    
+    private func setUI() {
+        view.addSubview(collectionView)
+        collectionView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+    }
+    
+    private func setDataSource() {
+        self.dataSource = UICollectionViewDiffableDataSource<Section, Item>(collectionView: collectionView) {
+            (collectionView: UICollectionView, indexPath: IndexPath, item: Item) -> UICollectionViewCell? in
+            
+            if case let .grid(user) = item {
+                
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: GridCollectionViewCell.id, for: indexPath) as? GridCollectionViewCell
+                cell?.apply(user: user)
+                return cell
+            } else if case let .list(user) = item {
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: GridCollectionViewCell.id, for: indexPath) as? GridCollectionViewCell
+                cell?.apply(user: user)
+                return cell
+            }
+            
+            return nil
+        }
+        
+    }
+    
+    private func createLayout() -> UICollectionViewLayout {
+        return UICollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
+            let section = self?.dataSource?.sectionIdentifier(for: sectionIndex)
+            switch section {
+            case .grid:
+                return self?.createGridSection()
+            default :
+                return self?.createListSection()
+            }
+        }
+    }
+    
+    private func createGridSection() -> NSCollectionLayoutSection {
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(0.5), heightDimension: .fractionalHeight(1.0))
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(220))
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 2)
+        group.interItemSpacing = .fixed(10)
+        let section = NSCollectionLayoutSection(group: group)
+        section.interGroupSpacing = 10
+        return section
+    }
+    
+    private func createListSection() -> NSCollectionLayoutSection {
+        let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalHeight(1.0))
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(120))
+        let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
+        let section = NSCollectionLayoutSection(group: group)
+        section.interGroupSpacing = 10
+        return section
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
