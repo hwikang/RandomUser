@@ -11,10 +11,8 @@ final class FloatingButton: UIButton {
    
     init(title: String) {
         super.init(frame: .zero)
-        var config = UIButton.Configuration.filled()
-        config.baseBackgroundColor = .systemBlue
-        config.cornerStyle = .capsule
-        configuration = config
+        backgroundColor = .systemBlue
+        layer.cornerRadius = 22
         layer.shadowRadius = 10
         layer.shadowOpacity = 0.3
         setTitle(title, for: .normal)
