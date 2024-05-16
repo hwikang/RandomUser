@@ -32,6 +32,12 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
         }
 
     }
+    public lazy var fetchMoreUser: Observable<Void> = collectionView.rx.prefetchItems.filter { [weak self] indexPath in
+        guard let lastIndexPath = indexPath.last,
+              let section = self?.dataSource?.snapshot().sectionIdentifiers[lastIndexPath.section],
+              let itemCount = self?.dataSource?.snapshot().numberOfItems(inSection: section) else { return false }
+        return lastIndexPath.row > itemCount - 4
+    }.map { _ in return () }
 
     private lazy var collectionView: UICollectionView = {
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: createLayout())
@@ -45,7 +51,6 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
     init() {
         super.init(nibName: nil, bundle: nil)
         setDataSource()
-
     }
     
     override func viewDidLoad() {

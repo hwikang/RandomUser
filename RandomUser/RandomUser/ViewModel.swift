@@ -38,8 +38,9 @@ final class ViewModel {
     public func transform(input: Input) -> Output {
         input.fetchMore.bind { [weak self] in
             guard let self = self else { return }
+            self.page.accept(self.page.value + 1)
             Task {
-                await self.getUsers(page: self.page.value + 1)
+                await self.getUsers(page: self.page.value)
             }
            
         }.disposed(by: disposeBag)
@@ -76,7 +77,7 @@ final class ViewModel {
         loading.accept(false)
         switch result {
         case .success(let fetchedUserList):
-            userList.accept(fetchedUserList)
+            userList.accept( userList.value + fetchedUserList)
         case .failure(let error):
             self.error.accept(error)
         }

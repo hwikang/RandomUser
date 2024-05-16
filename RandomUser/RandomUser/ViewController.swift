@@ -145,6 +145,7 @@ class ViewController: UIViewController {
                 let viewMode = viewMode.value
                 switch viewMode {
                 case .view:
+                    //TODO: 이미지 상세
                     print(selectedUser.uuid)
                 case .delete:
                     var deleteUserList = deleteUserList.value
@@ -161,7 +162,11 @@ class ViewController: UIViewController {
                          femaleViewController.refreshControl.rx.controlEvent(.valueChanged).asObservable())
             .bind(to: refreshTrigger)
             .disposed(by: disposeBag)
-          
+        
+        Observable.merge(maleViewController.fetchMoreUser, femaleViewController.fetchMoreUser)
+            .debounce(.milliseconds(200), scheduler: MainScheduler.instance)
+            .bind(to: fetchMoreTrigger)
+            .disposed(by: disposeBag)
     }
     
     private func bindViewModel() {
@@ -193,7 +198,6 @@ class ViewController: UIViewController {
             .observe(on: MainScheduler.instance)
             .bind { [weak self] deleteUserList, layoutType, maleList in
                 self?.maleViewController.applyData(selectedUserList: deleteUserList, section: layoutType, userList: maleList)
-                
                 
             }.disposed(by: disposeBag)
         
