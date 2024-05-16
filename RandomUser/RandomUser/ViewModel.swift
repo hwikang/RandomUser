@@ -14,7 +14,8 @@ final class ViewModel {
     private let page = BehaviorRelay<Int>(value: 1)
     private let userList = BehaviorRelay<[User]>(value: [])
     private let error = PublishRelay<Error>()
-
+    private let loading = PublishRelay<Bool>()
+    
     private let disposeBag = DisposeBag()
     struct Input {
         public let refresh: Observable<Void>
@@ -24,6 +25,7 @@ final class ViewModel {
     
     struct Output {
         public let error: Observable<Error>
+        public let loading: Observable<Bool>
         public let maleList: Observable<[User]>
         public let femaleList: Observable<[User]>
     }
@@ -65,11 +67,13 @@ final class ViewModel {
         let femaleList = userList.map { userList in
              return userList.filter { $0.gender == .female }
         }
-        return Output(error: error.asObservable(), maleList: maleList, femaleList: femaleList)
+        return Output(error: error.asObservable(), loading: loading.asObservable(), maleList: maleList, femaleList: femaleList)
     }
     
     private func getUsers(page: Int) async {
+        loading.accept(true)
         let result = await network.getUsers(page: page, results: 30)
+        loading.accept(false)
         switch result {
         case .success(let fetchedUserList):
             userList.accept(fetchedUserList)

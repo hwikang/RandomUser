@@ -32,7 +32,6 @@ class ViewController: UIViewController {
         stackView.distribution = .fillEqually
         return stackView
     }()
-    
     private let maleTabButton = TabButton(title: "남자")
     private let femaleTabButton = TabButton(title: "여자")
     
@@ -157,13 +156,30 @@ class ViewController: UIViewController {
                     self.deleteUserList.accept(deleteUserList)
                 }
             }.disposed(by: disposeBag)
-        
+
+        Observable.merge(maleViewController.refreshControl.rx.controlEvent(.valueChanged).asObservable(),
+                         femaleViewController.refreshControl.rx.controlEvent(.valueChanged).asObservable())
+            .bind(to: refreshTrigger)
+            .disposed(by: disposeBag)
+          
     }
     
     private func bindViewModel() {
         let input = ViewModel.Input(refresh: refreshTrigger.asObservable(), fetchMore: fetchMoreTrigger.asObservable(), deleteUser: deleteUserTrigger.asObservable())
         let output = viewModel.transform(input: input)
-        
+ 
+        output.loading
+            .observe(on: MainScheduler.instance)
+            .bind { [weak self] isLoading in
+                guard let visibleViewController = self?.pageViewController.viewControllers?.first,
+                      let index = self?.pages.firstIndex(of: visibleViewController) else { return }
+                if index == 0 {
+                    self?.maleViewController.refreshControl.rx.isRefreshing.onNext(isLoading)
+                } else {
+                    self?.femaleViewController.refreshControl.rx.isRefreshing.onNext(isLoading)
+                }
+            }.disposed(by: disposeBag)
+            
         output.error
             .observe(on: MainScheduler.instance)
             .bind { [weak self] error in

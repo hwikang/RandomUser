@@ -40,6 +40,8 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
         collectionView.delegate = self
         return collectionView
     }()
+    public let refreshControl = UIRefreshControl()
+
     init() {
         super.init(nibName: nil, bundle: nil)
         setDataSource()
@@ -77,7 +79,7 @@ class UserListViewController: UIViewController, UICollectionViewDelegate {
         collectionView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
-
+        collectionView.refreshControl = refreshControl
     }
     
     private func setDataSource() {
