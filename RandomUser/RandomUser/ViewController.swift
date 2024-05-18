@@ -129,8 +129,8 @@ class ViewController: UIViewController {
                 let viewMode = viewMode.value
                 switch viewMode {
                 case .view:
-                    //TODO: 이미지 상세
-                    print(selectedUser.uuid)
+                    let imageDetailVC = ImageDetailViewController(imageURL: selectedUser.picture.largeURL)
+                    navigationController?.pushViewController(imageDetailVC, animated: true)
                 case .delete:
                     var deleteUserList = deleteUserList.value
                     if deleteUserList.contains(where: { $0 == selectedUser.uuid }) {

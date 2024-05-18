@@ -76,7 +76,10 @@ final class ViewModel {
         let result = await network.getUsers(page: page, results: 30)
         loading.accept(false)
         switch result {
-        case .success(let fetchedUserList):
+        case .success(var fetchedUserList):
+            fetchedUserList = fetchedUserList.filter { fetchedUser in
+                !userList.value.contains { $0.uuid == fetchedUser.uuid }
+            }
             userList.accept( userList.value + fetchedUserList)
         case .failure(let error):
             self.error.accept(error)
