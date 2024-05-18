@@ -24,17 +24,7 @@ class ViewController: UIViewController {
     private let viewMode = BehaviorRelay<ViewMode>(value: .view)
     private let layoutType = BehaviorRelay<Section>(value: .grid)
     private let disposeBag = DisposeBag()
-    
-    private let tabButtonStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .horizontal
-        stackView.alignment = .fill
-        stackView.distribution = .fillEqually
-        return stackView
-    }()
-    private let maleTabButton = TabButton(title: "남자")
-    private let femaleTabButton = TabButton(title: "여자")
-    
+    private let tabButtonView = TabButtonView(typeList: [.male, .female])
     private lazy var pageViewController = {
         let pageViewController = UIPageViewController(transitionStyle: .scroll, navigationOrientation: .horizontal, options: nil)
         pageViewController.dataSource = self
@@ -46,7 +36,7 @@ class ViewController: UIViewController {
     private let femaleViewController = UserListViewController()
     
     private let floatingButton = FloatingButton(title: "View 전환")
-    private let changeViewModelButton = {
+    private let changeViewModeButton = {
         let button = UIButton()
         button.setTitle("삭제", for: .normal)
         button.setTitleColor(.systemRed, for: .normal)
@@ -70,7 +60,7 @@ class ViewController: UIViewController {
         setUI()
         bindView()
         bindViewModel()
-        maleTabButton.isSelected = true
+        tabButtonView.select(index: 0)
         pageViewController.setViewControllers([maleViewController], direction: .forward, animated: true, completion: nil)
         refreshTrigger.accept(())
     }
@@ -78,11 +68,9 @@ class ViewController: UIViewController {
     private func setUI() {
         title = "Random Users"
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: changeViewModelButton)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: changeViewModeButton)
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: deleteButton)
-        view.addSubview(tabButtonStackView)
-        tabButtonStackView.addArrangedSubview(maleTabButton)
-        tabButtonStackView.addArrangedSubview(femaleTabButton)
+        view.addSubview(tabButtonView)
         addChild(pageViewController)
         view.addSubview(pageViewController.view)
         pageViewController.didMove(toParent: self)
@@ -92,21 +80,17 @@ class ViewController: UIViewController {
     }
     
     private func bindView() {
-        maleTabButton.rx.tap.bind { [weak self] in
-            guard let self = self, !maleTabButton.isSelected else { return }
-            maleTabButton.isSelected = true
-            femaleTabButton.isSelected = false
-            
-            pageViewController.setViewControllers([pages[0]], direction: .reverse,
-                                                  animated: true, completion: nil)
+        tabButtonView.selectedType.bind { [weak self] type in
+            guard let self = self else { return }
+            switch type {
+            case .male:
+                pageViewController.setViewControllers([pages[0]], direction: .reverse, animated: true, completion: nil)
+            case .female:
+                pageViewController.setViewControllers([pages[1]], direction: .forward, animated: true, completion: nil)
+
+            }
         }.disposed(by: disposeBag)
-        femaleTabButton.rx.tap.bind { [weak self] in
-            guard let self = self, !femaleTabButton.isSelected else { return }
-            maleTabButton.isSelected = false
-            femaleTabButton.isSelected = true
-            pageViewController.setViewControllers([pages[1]], direction: .forward,
-                                                  animated: true, completion: nil)
-        }.disposed(by: disposeBag)
+
         floatingButton.rx.tap.bind { [weak self] in
             guard let self = self else { return }
             switch layoutType.value {
@@ -116,18 +100,18 @@ class ViewController: UIViewController {
                 layoutType.accept(.grid)
             }
         }.disposed(by: disposeBag)
-        changeViewModelButton.rx.tap.bind { [weak self] in
+        changeViewModeButton.rx.tap.bind { [weak self] in
             guard let self = self else { return }
             switch viewMode.value {
             case .view:
                 viewMode.accept(.delete)
-                changeViewModelButton.setTitle("취소", for: .normal)
-                changeViewModelButton.setTitleColor(.systemBlue, for: .normal)
+                changeViewModeButton.setTitle("취소", for: .normal)
+                changeViewModeButton.setTitleColor(.systemBlue, for: .normal)
                 deleteButton.isHidden = false
             case .delete:
                 viewMode.accept(.view)
-                changeViewModelButton.setTitle("삭제", for: .normal)
-                changeViewModelButton.setTitleColor(.systemRed, for: .normal)
+                changeViewModeButton.setTitle("삭제", for: .normal)
+                changeViewModeButton.setTitleColor(.systemRed, for: .normal)
                 deleteButton.isHidden = true
                 deleteUserList.accept([])
             }
@@ -211,13 +195,13 @@ class ViewController: UIViewController {
     
     private func setConstraints() {
         
-        tabButtonStackView.snp.makeConstraints { make in
+        tabButtonView.snp.makeConstraints { make in
             make.top.leading.trailing.equalTo(view.safeAreaLayoutGuide)
             make.height.equalTo(60)
         }
         
         pageViewController.view.snp.makeConstraints { make in
-            make.top.equalTo(tabButtonStackView.snp.bottom)
+            make.top.equalTo(tabButtonView.snp.bottom)
             make.leading.trailing.bottom.equalToSuperview()
         }
         floatingButton.snp.makeConstraints { make in
@@ -232,6 +216,7 @@ class ViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 }
+
 extension ViewController: UIPageViewControllerDataSource, UIPageViewControllerDelegate {
     
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
@@ -252,13 +237,7 @@ extension ViewController: UIPageViewControllerDataSource, UIPageViewControllerDe
     func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
         if let visibleViewController = pageViewController.viewControllers?.first,
            let index = pages.firstIndex(of: visibleViewController) {
-            if index == 0 {
-                maleTabButton.isSelected = true
-                femaleTabButton.isSelected = false
-            } else {
-                femaleTabButton.isSelected = true
-                maleTabButton.isSelected = false
-            }
+            tabButtonView.select(index: index)
         }
     }
     
