@@ -21,7 +21,7 @@ final class Network {
     }
 }
 
-enum NetworkError: Error {
+public enum NetworkError: Error {
     case responseParsingError
 }
 

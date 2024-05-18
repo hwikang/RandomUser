@@ -9,12 +9,12 @@ import UIKit
 import RxCocoa
 import RxSwift
 
-enum TabButtonType: String {
+public enum TabButtonType: String {
     case male = "남자"
     case female = "여자"
 }
 
-final class TabButtonView: UIStackView {
+final public class TabButtonView: UIStackView {
 
     private let disposeBag = DisposeBag()
     public let selectedType = PublishRelay<TabButtonType>()

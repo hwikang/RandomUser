@@ -6,7 +6,7 @@
 //
 import UIKit
 
-final class ListCollectionViewCell: UICollectionViewCell {
+final public class ListCollectionViewCell: UICollectionViewCell {
     static let id = "ListCollectionViewCell"
     private let imageView = {
         let imageView = UIImageView()

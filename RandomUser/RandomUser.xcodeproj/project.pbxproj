@@ -107,6 +107,24 @@
 			path = Entity;
 			sourceTree = "<group>";
 		};
+		F8427DF22BF85A1D00A2BD87 /* ViewModel */ = {
+			isa = PBXGroup;
+			children = (
+				F82B1A1C2BF447ED0052B1E1 /* ViewModel.swift */,
+			);
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		F8427DF32BF85A2800A2BD87 /* ViewController */ = {
+			isa = PBXGroup;
+			children = (
+				F86AE7122BF1F1B900B34076 /* ViewController.swift */,
+				F8427DF02BF8540B00A2BD87 /* ImageDetailViewController.swift */,
+				F82B1A2C2BF463900052B1E1 /* UserListViewController.swift */,
+			);
+			path = ViewController;
+			sourceTree = "<group>";
+		};
 		F86AE7022BF1F1B900B34076 = {
 			isa = PBXGroup;
 			children = (
@@ -130,10 +148,8 @@
 			children = (
 				F86AE70E2BF1F1B900B34076 /* AppDelegate.swift */,
 				F86AE7102BF1F1B900B34076 /* SceneDelegate.swift */,
-				F86AE7122BF1F1B900B34076 /* ViewController.swift */,
-				F8427DF02BF8540B00A2BD87 /* ImageDetailViewController.swift */,
-				F82B1A2C2BF463900052B1E1 /* UserListViewController.swift */,
-				F82B1A1C2BF447ED0052B1E1 /* ViewModel.swift */,
+				F8427DF32BF85A2800A2BD87 /* ViewController */,
+				F8427DF22BF85A1D00A2BD87 /* ViewModel */,
 				F894000E2BF3629F00C0DA6A /* View */,
 				F82B1A202BF44E950052B1E1 /* Network */,
 				F82B1A232BF44ECA0052B1E1 /* Entity */,

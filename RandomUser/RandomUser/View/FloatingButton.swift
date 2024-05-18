@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class FloatingButton: UIButton {
+final public class FloatingButton: UIButton {
    
     init(title: String) {
         super.init(frame: .zero)

@@ -8,7 +8,7 @@
 import UIKit
 import Kingfisher
 
-final class GridCollectionViewCell: UICollectionViewCell {
+final public class GridCollectionViewCell: UICollectionViewCell {
     static let id = "GridCollectionViewCell"
     private let imageView = {
         let imageView = UIImageView()

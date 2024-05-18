@@ -24,6 +24,7 @@ class ViewController: UIViewController {
     private let viewMode = BehaviorRelay<ViewMode>(value: .view)
     private let layoutType = BehaviorRelay<Section>(value: .grid)
     private let disposeBag = DisposeBag()
+    
     private let tabButtonView = TabButtonView(typeList: [.male, .female])
     private lazy var pageViewController = {
         let pageViewController = UIPageViewController(transitionStyle: .scroll, navigationOrientation: .horizontal, options: nil)
@@ -36,10 +37,12 @@ class ViewController: UIViewController {
     private let femaleViewController = UserListViewController()
     
     private let floatingButton = FloatingButton(title: "View 전환")
-    private let changeViewModeButton = {
+    private let deleteViewModeButton = {
         let button = UIButton()
         button.setTitle("삭제", for: .normal)
         button.setTitleColor(.systemRed, for: .normal)
+        button.setTitle("취소", for: .selected)
+        button.setTitleColor(.systemBlue, for: .selected)
         return button
     }()
     private let deleteButton = {
@@ -67,8 +70,8 @@ class ViewController: UIViewController {
     
     private func setUI() {
         title = "Random Users"
-        
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: changeViewModeButton)
+        view.backgroundColor = .systemBackground
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: deleteViewModeButton)
         navigationItem.leftBarButtonItem = UIBarButtonItem(customView: deleteButton)
         view.addSubview(tabButtonView)
         addChild(pageViewController)
@@ -100,18 +103,24 @@ class ViewController: UIViewController {
                 layoutType.accept(.grid)
             }
         }.disposed(by: disposeBag)
-        changeViewModeButton.rx.tap.bind { [weak self] in
+        deleteViewModeButton.rx.tap.bind { [weak self] in
             guard let self = self else { return }
             switch viewMode.value {
             case .view:
                 viewMode.accept(.delete)
-                changeViewModeButton.setTitle("취소", for: .normal)
-                changeViewModeButton.setTitleColor(.systemBlue, for: .normal)
-                deleteButton.isHidden = false
             case .delete:
                 viewMode.accept(.view)
-                changeViewModeButton.setTitle("삭제", for: .normal)
-                changeViewModeButton.setTitleColor(.systemRed, for: .normal)
+            }
+        }.disposed(by: disposeBag)
+       
+        viewMode.bind { [weak self] viewMode in
+            guard let self = self else { return }
+            switch viewMode {
+            case .delete:
+                deleteViewModeButton.isSelected = true
+                deleteButton.isHidden = false
+            case .view:
+                deleteViewModeButton.isSelected = false
                 deleteButton.isHidden = true
                 deleteUserList.accept([])
             }
@@ -121,24 +130,17 @@ class ViewController: UIViewController {
             guard let self = self else { return }
             deleteUserTrigger.accept(deleteUserList.value)
             deleteUserList.accept([])
+            viewMode.accept(.view)
         }.disposed(by: disposeBag)
         
         Observable.merge(maleViewController.selectedUser, femaleViewController.selectedUser)
-            .bind {  [weak self] selectedUser in
+            .bind { [weak self] selectedUser in
                 guard let self = self else { return }
-                let viewMode = viewMode.value
-                switch viewMode {
+                switch viewMode.value {
                 case .view:
-                    let imageDetailVC = ImageDetailViewController(imageURL: selectedUser.picture.largeURL)
-                    navigationController?.pushViewController(imageDetailVC, animated: true)
+                    pushImageDetailVC(imageURL: selectedUser.picture.largeURL)
                 case .delete:
-                    var deleteUserList = deleteUserList.value
-                    if deleteUserList.contains(where: { $0 == selectedUser.uuid }) {
-                        deleteUserList.removeAll { $0 == selectedUser.uuid }
-                    } else {
-                        deleteUserList.append(selectedUser.uuid)
-                    }
-                    self.deleteUserList.accept(deleteUserList)
+                    selectDeleteUser(selectedUser: selectedUser)
                 }
             }.disposed(by: disposeBag)
 
@@ -172,34 +174,44 @@ class ViewController: UIViewController {
         output.error
             .observe(on: MainScheduler.instance)
             .bind { [weak self] error in
-                let alert = UIAlertController(title: "에러", message: "뉴스 불러오기에 실패 하였습니다. 다시 시도해 주세요\n\(error.localizedDescription)", preferredStyle: .alert)
-                let action = UIAlertAction(title: "확인", style: UIAlertAction.Style.default)
-                alert.addAction(action)
-            self?.present(alert, animated: true)
-        }.disposed(by: disposeBag)
-        
-        Observable.combineLatest(deleteUserList, layoutType, output.maleList)
-            .observe(on: MainScheduler.instance)
-            .bind { [weak self] deleteUserList, layoutType, maleList in
-                self?.maleViewController.applyData(selectedUserList: deleteUserList, section: layoutType, userList: maleList)
-                
+                self?.presentErrorAlert(error: error)
             }.disposed(by: disposeBag)
         
-        Observable.combineLatest(deleteUserList, layoutType, output.femaleList)
+        Observable.combineLatest(deleteUserList, layoutType, output.maleList, output.femaleList)
             .observe(on: MainScheduler.instance)
-            .bind { [weak self] deleteUserList, layoutType, femaleList in
+            .bind { [weak self] deleteUserList, layoutType, maleList, femaleList in
+                self?.maleViewController.applyData(selectedUserList: deleteUserList, section: layoutType, userList: maleList)
                 self?.femaleViewController.applyData(selectedUserList: deleteUserList, section: layoutType, userList: femaleList)
-                
             }.disposed(by: disposeBag)
     }
     
+    private func pushImageDetailVC(imageURL: URL?) {
+        let imageDetailVC = ImageDetailViewController(imageURL: imageURL)
+        navigationController?.pushViewController(imageDetailVC, animated: true)
+    }
+    
+    private func selectDeleteUser(selectedUser: User) {
+        var deleteUserList = deleteUserList.value
+        if deleteUserList.contains(where: { $0 == selectedUser.uuid }) {
+            deleteUserList.removeAll { $0 == selectedUser.uuid }
+        } else {
+            deleteUserList.append(selectedUser.uuid)
+        }
+        self.deleteUserList.accept(deleteUserList)
+    }
+    
+    private func presentErrorAlert(error: Error) {
+        let alert = UIAlertController(title: "에러", message: "뉴스 불러오기에 실패 하였습니다. 다시 시도해 주세요\n\(error.localizedDescription)", preferredStyle: .alert)
+        let action = UIAlertAction(title: "확인", style: UIAlertAction.Style.default)
+        alert.addAction(action)
+        present(alert, animated: true)
+    }
+    
     private func setConstraints() {
-        
         tabButtonView.snp.makeConstraints { make in
             make.top.leading.trailing.equalTo(view.safeAreaLayoutGuide)
             make.height.equalTo(60)
         }
-        
         pageViewController.view.snp.makeConstraints { make in
             make.top.equalTo(tabButtonView.snp.bottom)
             make.leading.trailing.bottom.equalToSuperview()

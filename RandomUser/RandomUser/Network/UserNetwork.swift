@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class UserNetwork {
+final public class UserNetwork {
     private let module = Network()
     public func getUsers(page: Int, results: Int) async -> Result<[User], Error> {
         let result = await module.requestAPI(page: page, results: results, method: .get)
